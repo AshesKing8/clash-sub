@@ -15,30 +15,50 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: 🔍 Debug - Check nodes.txt
+        run: |
+          # 检查 nodes.txt 是否存在且有内容
+          if [ ! -s nodes.txt ]; then
+            echo "❌ 错误：nodes.txt 是空的！请填入节点链接！"
+            exit 1
+          fi
+          echo "✅ nodes.txt 检查通过，内容预览："
+          head -n 3 nodes.txt
+
       - name: Download Subconverter
         run: |
           wget -O subconverter.tar.gz https://github.com/tindy2013/subconverter/releases/download/v0.7.2/subconverter_linux64.tar.gz
           tar -zxf subconverter.tar.gz
           chmod +x subconverter/subconverter
 
-      - name: Start Local Server & Generate
+      - name: Create Local Config (防网络拦截)
         run: |
-          # 1. 启动一个临时网页服务器 (端口 25500)
-          python3 -m http.server 25500 &
+          # 手动创建一个最简单的配置文件，不依赖远程下载
+          echo "api_mode=true" > pref.ini
+          echo "target=clash" >> pref.ini
+          echo "url=nodes.txt" >> pref.ini
+          echo "output=clash.yaml" >> pref.ini
           
-          # 2. 睡 3 秒等待服务器启动
-          sleep 3
+          # 简单的分流规则配置
+          echo "[Rules]" >> pref.ini
+          echo "MATCH,DIRECT" >> pref.ini
           
-          # 3. 开始转换 (注意：现在 url 变成了 localhost 链接，这就稳了)
-          ./subconverter/subconverter -g --target=clash --url="http://localhost:25500/nodes.txt" --output="clash.yaml" --config="https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/config/ACL4SSR_Online.ini"
+          echo "✅ 本地配置文件 pref.ini 创建成功"
 
-      - name: Check Result
+      - name: Generate Config
+        run: |
+          # 启动转换 (使用本地文件路径)
+          # 注意：这里我们不指定 --config，让它使用默认或生成的配置
+          ./subconverter/subconverter -g --target=clash --url=$(pwd)/nodes.txt --output=$(pwd)/clash.yaml
+
+      - name: Check Result & Rename
         run: |
           if [ -f "clash.yaml" ]; then
             echo "✅ 成功生成 clash.yaml"
             ls -lh clash.yaml
           else
-            echo "❌ 生成失败"
+            echo "❌ 生成失败！尝试查看 subconverter 目录..."
+            ls -R subconverter/
             exit 1
           fi
 
