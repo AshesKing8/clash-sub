@@ -2,8 +2,8 @@ name: Update Subscription
 on:
   push:
     paths:
-      - 'nodes.txt' # 当 nodes.txt 更新时触发
-  workflow_dispatch: # 允许手动点按钮运行
+      - 'nodes.txt'
+  workflow_dispatch:
 
 jobs:
   build:
@@ -16,18 +16,28 @@ jobs:
 
       - name: Download Subconverter
         run: |
-          wget https://github.com/tindy2013/subconverter/releases/download/v0.7.2/subconverter_linux64.tar.gz
-          tar -zxf subconverter_linux64.tar.gz
+          # 下载工具
+          wget -O subconverter.tar.gz https://github.com/tindy2013/subconverter/releases/download/v0.7.2/subconverter_linux64.tar.gz
+          # 解压
+          tar -zxf subconverter.tar.gz
+          # 给执行权限 (防止权限不足报错)
+          chmod +x subconverter/subconverter
 
       - name: Generate Config
         run: |
-          # 生成配置文件，使用基础配置
-          ./subconverter/subconverter -g --artifact "clash" --url $(pwd)/nodes.txt --output $(pwd)/clash.yaml
+          # 核心修复：把 --artifact 改为 --target，并确保使用绝对路径
+          # 加上 acl4ssr 的规则配置，让分流更智能
+          ./subconverter/subconverter -g --target=clash --url=$(pwd)/nodes.txt --output=$(pwd)/clash.yaml --config=https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/config/ACL4SSR_Online.ini
+
+      - name: Check if file exists
+        run: |
+          ls -l clash.yaml
 
       - name: Commit and Push
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add clash.yaml
-          git commit -m "Auto update subscription" || exit 0
+          # 如果文件没变化，就不提交，防止报错
+          git commit -m "Auto update subscription" || echo "No changes to commit"
           git push
