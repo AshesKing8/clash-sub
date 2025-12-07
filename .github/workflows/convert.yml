@@ -1,60 +1,61 @@
-name: Update Subscription
+name: Convert nodes.txt to Clash Subscription
+
 on:
   push:
-    paths:
-      - 'nodes.txt'
-      - '.github/workflows/convert.yml'
-  workflow_dispatch:
+    branches:
+      - main
+  schedule:
+    - cron: '0 0 * * *'  # 每天自动运行一次
 
 jobs:
-  build:
+  convert:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
+
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+    - name: Checkout repository
+      uses: actions/checkout@v2
 
-      - name: Download Subconverter
-        run: |
-          wget -O sub.tar.gz https://github.com/tindy2013/subconverter/releases/download/v0.7.2/subconverter_linux64.tar.gz
-          tar -zxf sub.tar.gz
-          chmod +x subconverter/subconverter
+    - name: Download nodes.txt
+      run: |
+        curl -L https://github.com/AshesKing8/clash-sub/raw/main/nodes.txt -o nodes.txt
 
-      - name: 🚀 Run Dual Servers (双服务器模式)
-        run: |
-          # 1. 启动 Python 服务器，把当前目录变成 http://127.0.0.1:8000
-          # 这样 nodes.txt 就可以通过 http://127.0.0.1:8000/nodes.txt 访问
-          python3 -m http.server 8000 &
-          
-          # 2. 启动 Subconverter 服务 (端口 25500)
-          cd subconverter
-          ./subconverter &
-          
-          # 3. 休息 5 秒，等待两个服务完全启动
-          sleep 5
-          
-          # 4. 这里的魔法：让 Subconverter (25500) 去抓 Python (8000) 的文件
-          # 使用 curl 将结果保存为 clash.yaml
-          curl -v "http://127.0.0.1:25500/sub?target=clash&url=http://127.0.0.1:8000/nodes.txt&insert=false&config=https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/config/ACL4SSR_Online_Mini.ini" -o ../clash.yaml
+    - name: Convert nodes.txt to Clash Subscription YAML
+      run: |
+        python3 <<EOF
+import yaml
 
-      - name: Verify Result
-        run: |
-          if [ -s "clash.yaml" ]; then
-            echo "✅ 成功！文件大小："
-            ls -lh clash.yaml
-          else
-            echo "❌ 失败：生成的 clash.yaml 是空的或不存在"
-            # 打印一下 curl 的错误日志或者尝试无配置转换
-            echo "尝试无配置兜底转换..."
-            curl -v "http://127.0.0.1:25500/sub?target=clash&url=http://127.0.0.1:8000/nodes.txt" -o clash.yaml
-            if [ ! -s "clash.yaml" ]; then exit 1; fi
-          fi
+# 读取 nodes.txt 文件内容
+with open('nodes.txt', 'r', encoding='utf-8') as f:
+    nodes = f.readlines()
 
-      - name: Commit and Push
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add clash.yaml
-          git commit -m "Auto update subscription" || echo "No changes to commit"
-          git push
+# 处理 nodes.txt 内容，将其转为 Clash 配置格式
+clash_config = {
+    'proxies': []
+}
+
+for node in nodes:
+    # 假设每行是 "类型://地址"
+    parts = node.strip().split('://')
+    if len(parts) == 2:
+        proxy = {
+            'name': parts[1],  # 使用节点的地址作为名称
+            'type': parts[0],  # 使用协议类型
+            'server': parts[1],
+            'port': 443,  # 默认端口
+            'cipher': 'auto',  # 可以根据需要调整
+            'password': 'your-password-here',  # 添加密码或其他必要配置
+            'udp': True  # 启用 UDP 转发
+        }
+        clash_config['proxies'].append(proxy)
+
+# 将生成的 Clash 配置写入 output.yaml
+with open('clash_subscription.yaml', 'w', encoding='utf-8') as f:
+    yaml.dump(clash_config, f, default_flow_style=False, allow_unicode=True)
+
+EOF
+
+    - name: Upload Clash Subscription
+      uses: actions/upload-artifact@v2
+      with:
+        name: clash-subscription
+        path: clash_subscription.yaml
