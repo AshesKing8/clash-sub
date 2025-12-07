@@ -15,44 +15,40 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: 🧹 Clean nodes.txt (关键修复)
-        run: |
-          # 强制清洗 Windows 回车符，防止工具读取失败
-          sed -i 's/\r$//' nodes.txt
-          # 检查文件内容
-          if [ ! -s nodes.txt ]; then
-            echo "❌ nodes.txt 是空的！"
-            exit 1
-          fi
-          echo "✅ 文件已清洗，准备转换"
-
-      - name: Download Tool
+      - name: Download Subconverter
         run: |
           wget -O sub.tar.gz https://github.com/tindy2013/subconverter/releases/download/v0.7.2/subconverter_linux64.tar.gz
           tar -zxf sub.tar.gz
-          # 赋予执行权限
           chmod +x subconverter/subconverter
 
-      - name: Move & Convert (贴身运行)
+      - name: 🚀 Run Dual Servers (双服务器模式)
         run: |
-          # 1. 把 nodes.txt 搬进工具目录，跟工具放在一起
-          cp nodes.txt subconverter/nodes.txt
+          # 1. 启动 Python 服务器，把当前目录变成 http://127.0.0.1:8000
+          # 这样 nodes.txt 就可以通过 http://127.0.0.1:8000/nodes.txt 访问
+          python3 -m http.server 8000 &
           
-          # 2. 进入目录
+          # 2. 启动 Subconverter 服务 (端口 25500)
           cd subconverter
+          ./subconverter &
           
-          # 3. 原地运行 (不使用 url 参数，使用 pipe 管道输入，这是最稳的方法)
-          # 把 nodes.txt 的内容“喂”给工具
-          cat nodes.txt | ./subconverter -g --target=clash --url="pipe" --output="clash.yaml"
+          # 3. 休息 5 秒，等待两个服务完全启动
+          sleep 5
           
-          # 4. 检查是否生成
-          if [ -f "clash.yaml" ]; then
-             echo "✅ 转换成功！"
-             # 把生成的 clash.yaml 搬回项目根目录
-             mv clash.yaml ../clash.yaml
+          # 4. 这里的魔法：让 Subconverter (25500) 去抓 Python (8000) 的文件
+          # 使用 curl 将结果保存为 clash.yaml
+          curl -v "http://127.0.0.1:25500/sub?target=clash&url=http://127.0.0.1:8000/nodes.txt&insert=false&config=https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/config/ACL4SSR_Online_Mini.ini" -o ../clash.yaml
+
+      - name: Verify Result
+        run: |
+          if [ -s "clash.yaml" ]; then
+            echo "✅ 成功！文件大小："
+            ls -lh clash.yaml
           else
-             echo "❌ 转换失败，查看日志..."
-             exit 1
+            echo "❌ 失败：生成的 clash.yaml 是空的或不存在"
+            # 打印一下 curl 的错误日志或者尝试无配置转换
+            echo "尝试无配置兜底转换..."
+            curl -v "http://127.0.0.1:25500/sub?target=clash&url=http://127.0.0.1:8000/nodes.txt" -o clash.yaml
+            if [ ! -s "clash.yaml" ]; then exit 1; fi
           fi
 
       - name: Commit and Push
