@@ -21,7 +21,7 @@ jobs:
 
     - name: Convert nodes.txt to Clash Subscription YAML
       run: |
-        python3 <<EOF
+        python3 -c "
 import yaml
 
 # 读取 nodes.txt 文件内容
@@ -34,7 +34,7 @@ clash_config = {
 }
 
 for node in nodes:
-    # 假设每行是 "类型://地址"
+    # 假设每行是 '类型://地址'
     parts = node.strip().split('://')
     if len(parts) == 2:
         proxy = {
@@ -51,8 +51,7 @@ for node in nodes:
 # 将生成的 Clash 配置写入 output.yaml
 with open('clash_subscription.yaml', 'w', encoding='utf-8') as f:
     yaml.dump(clash_config, f, default_flow_style=False, allow_unicode=True)
-
-EOF
+        "
 
     - name: Upload Clash Subscription
       uses: actions/upload-artifact@v2
