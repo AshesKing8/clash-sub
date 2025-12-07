@@ -101,3 +101,4 @@ trojan://BxceQaOe@58.152.25.242:443?security=tls&sni=t.me/ripaojiedian&allowInse
 trojan://BxceQaOe@58.152.30.120:443?security=tls&sni=🔒 [By EbraSha] b2n.ir/v2ray-configs | 306 &fp=chrome&allowInsecure=1&type=tcp&headerType=none#%F0%9F%91%89%F0%9F%86%94%20%40v2ray_configs_pool%20%F0%9F%93%A1%20%F0%9F%87%AD%F0%9F%87%B0HK%20%F0%9F%A7%AD%201.4MB%2Fs
 vless://c1853115-eb6b-4592-b01f-05037d33505d@bg.fasssst.ru:443?encryption=none&flow=xtls-rprx-vision&security=reality&sni=bg.fasssst.ru&fp=chrome&pbk=v5phvruLtbRahHL0xJtl77s4sXHiuSHzUTPq2znyCF4&sid=f5b76860a3c9c3f5&type=tcp&headerType=none#BESTIIVPNBOT
 trojan://BxceQaOe@58.152.25.20:443?security=tls&sni=t.me/ripaojiedian&allowInsecure=1&type=tcp&headerType=none#%E6%9C%AA%E7%9F%A5%20TROJAN-697%20%7C%20free-nodes
+vless://72fd4afb-cf18-4145-e112-ed49c267c6e8@icook.tw:8443?encryption=none&security=tls&type=ws&host=v.int.xx.kg&path=%2Fv#vless-ws-tls
