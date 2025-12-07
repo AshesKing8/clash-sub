@@ -1,0 +1,33 @@
+name: Update Subscription
+on:
+  push:
+    paths:
+      - 'nodes.txt' # 当 nodes.txt 更新时触发
+  workflow_dispatch: # 允许手动点按钮运行
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Download Subconverter
+        run: |
+          wget https://github.com/tindy2013/subconverter/releases/download/v0.7.2/subconverter_linux64.tar.gz
+          tar -zxf subconverter_linux64.tar.gz
+
+      - name: Generate Config
+        run: |
+          # 生成配置文件，使用基础配置
+          ./subconverter/subconverter -g --artifact "clash" --url $(pwd)/nodes.txt --output $(pwd)/clash.yaml
+
+      - name: Commit and Push
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add clash.yaml
+          git commit -m "Auto update subscription" || exit 0
+          git push
